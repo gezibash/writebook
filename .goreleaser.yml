@@ -1,0 +1,42 @@
+version: 2
+
+project_name: writebook-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: writebook-cli
+    binary: writebook-cli
+    dir: ./cli
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: writebook-cli
+    builds:
+      - writebook-cli
+    name_template: "writebook-cli_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^style:"
+      - "^test:"

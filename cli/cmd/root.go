@@ -15,6 +15,10 @@ var rootCmd = &cobra.Command{
 	Short: "CLI for managing Writebook",
 }
 
+func SetVersion(version, commit, date string) {
+	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, date)
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

@@ -16,6 +16,24 @@
   flex-direction: column;
   margin: 0;
   text-align: center;
+
+  .flex-inline {
+    inline-size: 100%;
+  }
+
+  .book__cover {
+    aspect-ratio: 11 / 16;
+    inline-size: 100%;
+    object-fit: cover;
+  }
+
+  .book__cover-wrapper {
+    inline-size: 100%;
+  }
+
+  .book__cover-copy {
+    pointer-events: none;
+  }
 }
 
 .library__book--empty {

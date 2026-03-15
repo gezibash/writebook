@@ -1,7 +1,9 @@
 handbook:
   title: Handbook
   slug: handbook
+  cover_seed: 1111222233334444
 
 manual:
   title: Manual
   slug: manual
+  cover_seed: aaaabbbbccccdddd

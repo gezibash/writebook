@@ -94,6 +94,18 @@ cd cli
 go build -o writebook .
 ```
 
+## Cover Styles
+
+Generated covers now support a curated set of styles: `blocks`, `glass`, `rings`, `shapes`, and `identicon`.
+
+By default, DiceBear-backed styles use the public v9 API. To point Writebook at a self-hosted DiceBear instance instead, set:
+
+```bash
+export DICEBEAR_API_URL=https://dicebear.example.com/9.x
+```
+
+The value should be the API root that already includes the DiceBear version segment.
+
 ## Configuration
 
 The CLI reads config from environment variables or `~/.writebook.yaml`:

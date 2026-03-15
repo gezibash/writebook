@@ -1,85 +1,136 @@
 <%= form_with model: book, id: "book-editor" do |form| %>
-  <%= tag.div class:"book__form flex align-center gap full-width #{"theme--#{book&.theme}" unless book.cover.attached? }", style:"--input-padding: 0.5rem 1rem; --input-border-radius: 0.5rem" do %>
-    <div class="flex gap-half">
-      <fieldset class="flex flex-column unpad margin-block-end borderless justify-space-between">
-        <legend class="for-screen-reader">Cover color</legend>
+  <%= tag.div class:"book__form theme--#{book.theme}", style:"--input-padding: 0.5rem 1rem; --input-border-radius: 0.5rem", data: {
+      controller: "book-cover-preview",
+      book_cover_preview_dicebear_endpoint_value: dicebear_base_url,
+      book_cover_preview_theme_colors_value: dicebear_theme_palettes.to_json,
+      book_cover_preview_style_options_value: book_cover_style_options.to_json
+    } do %>
 
-        <% Book.themes.keys.each do | theme | %>
-          <label class="btn btn--circle txt-small" style="--btn-background: var(--theme-color--<%= theme -%>)" >
-            <%= form.radio_button :theme, theme %>
-            <%= image_tag "check.svg", aria: { hidden: "true" }, size: 24, class: "checked" %>
-            <span class="for-screen-reader"><%= theme %></span>
-          </label>
-        <% end %>
-      </fieldset>
-      <%= tag.div class: "flex flex-column", data: { controller: "upload-preview", upload_preview_default_image_value: asset_url("empty-cover.png") } do %>
-        <label class="align-center center gap position-relative margin-block-end">
-          <% unless book.cover.attached? %>
-            <span class="btn btn--reversed txt-medium book__cover--add">
-              <%= image_tag "camera.svg", aria: { hidden: "true" }, size: 24 %>
+    <div class="book__form-top">
+      <%# -- Left column: cover + controls -- %>
+      <div class="book__form-cover-section">
+        <%= tag.div class: "book__form-preview", data: { controller: "upload-preview", upload_preview_default_image_value: asset_url("empty-cover.png") } do %>
+          <%= form.hidden_field :cover_seed, data: { book_cover_preview_target: "seedInput" } %>
+
+          <label class="align-center center gap position-relative margin-block-end">
+            <span class="btn btn--reversed book__cover--add">
+              <%= image_tag "camera.svg", aria: { hidden: "true" }, size: 16 %>
               <span class="for-screen-reader">Upload a cover</span>
             </span>
-          <% end %>
 
-          <div class="input--file">
-            <%= image_tag book.cover.attached? ? book.cover : "empty-cover.png", alt: "Book cover",
-                class: "book__cover margin-none", style: "--cover-height: 60vh",
-                data: { upload_preview_target: "image" } %>
-            <%= form.file_field :cover, class: "input", accept: "image/png, image/jpeg, image/jpg, image/webp",
-                data: { upload_preview_target: "input", action: "upload-preview#previewImage" },
-                title: book.cover.attached? ? "Replace book cover" : "Upload book cover" %>
-          </div>
-        </label>
+            <div class="input--file">
+              <%= tag.span class: "book__cover-wrapper", hidden: book.cover.attached?, data: { upload_preview_target: "svg" } do %>
+                <%= book_cover_svg(book.cover_seed, class: "book__cover margin-none", hidden: true, data: { book_cover_preview_target: "blocksArt" }) %>
+                <%= image_tag dicebear_cover_url(book.cover_seed, theme: book.theme, cover_style: book.cover_style),
+                    alt: "Generated book cover",
+                    class: "book__cover margin-none",
+                    data: { book_cover_preview_target: "dicebearArt" } %>
+                <span class="book__cover-copy book__cover-copy--preview" aria-hidden="true">
+                  <span class="book__title book__cover-title book__cover-title--preview overflow-line-clamp txt-align-start txt-tight-lines"
+                    style="--lines: 4"
+                    data-book-cover-preview-target="title"><%= book.title.presence || "Book title" %></span>
+                  <span class="book__cover-subtitle book__cover-subtitle--preview overflow-line-clamp txt-align-start"
+                    style="--lines: 2"
+                    data-book-cover-preview-target="subtitle"><%= book.subtitle.presence || "Subtitle" %></span>
+                  <span class="book__cover-author book__cover-author--preview overflow-line-clamp txt-align-start"
+                    style="--lines: 2"
+                    data-book-cover-preview-target="author"><%= book.author.presence || "Author" %></span>
+                </span>
+              <% end %>
+              <%= image_tag book.cover.attached? ? book.cover : "empty-cover.png", alt: "Book cover",
+                  class: "book__cover margin-none",
+                  hidden: !book.cover.attached?,
+                  data: { upload_preview_target: "image" } %>
+              <%= form.file_field :cover, class: "input", accept: "image/png, image/jpeg, image/jpg, image/webp",
+                  data: { upload_preview_target: "input", action: "upload-preview#previewImage" },
+                  title: book.cover.attached? ? "Replace book cover" : "Upload book cover" %>
+            </div>
+          </label>
 
-        <% if book.cover.attached? %>
-          <%= tag.label class:"btn btn--negative txt-small center book__cover--remove", data: { action: "click->upload-preview#clear", upload_preview_target: "button" } do %>
+          <%= tag.label class:"btn btn--negative txt-small center book__cover--remove", hidden: !book.cover.attached?, data: { action: "click->upload-preview#clear", upload_preview_target: "button" } do %>
             <%= image_tag "minus.svg", aria: { hidden: "true" }, size: 24 %>
             <%= check_box_tag "remove_cover", "true" %>
             <span class="for-screen-reader">Remove cover image</span>
           <% end %>
         <% end %>
-      <% end %>
-    <% end %>
 
-    <div class="flex flex-column gap full-width">
-      <div class="flex align-center gap txt-medium">
-        <%= translation_button(:book_title) %>
-        <h1 class="txt-xx-large margin-none full-width">
-          <%= form.text_field :title, required: true, autofocus: true, class: "input", placeholder: "Book title", autocomplete: "off" %>
-        </h1>
+        <fieldset class="book__form-colors borderless unpad margin-none">
+          <legend class="for-screen-reader">Cover color</legend>
+          <div class="flex gap-half justify-center flex-wrap">
+            <% Book.themes.keys.each do |theme| %>
+              <label class="btn btn--circle txt-small" style="--btn-background: var(--theme-color--<%= theme -%>)">
+                <%= form.radio_button :theme, theme, data: { action: "change->book-cover-preview#update", book_cover_preview_target: "themeInput" } %>
+                <%= image_tag "check.svg", aria: { hidden: "true" }, size: 24, class: "checked" %>
+                <span class="for-screen-reader"><%= theme %></span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+
+        <fieldset class="book__cover-style-inputs borderless unpad margin-none">
+          <legend class="for-screen-reader">Cover style</legend>
+          <% book_cover_style_options.each_key do |style| %>
+            <%= form.radio_button :cover_style, style, data: { action: "change->book-cover-preview#update", book_cover_preview_target: "styleInput" } %>
+          <% end %>
+        </fieldset>
+
+        <div class="book__cover-style-bar">
+          <%= button_tag type: "button", class: "btn btn--circle book__cover-style-button", data: { action: "book-cover-preview#cycleStyle", direction: "-1" } do %>
+            <%= image_tag "arrow-left.svg", aria: { hidden: true }, size: 24 %>
+            <span class="for-screen-reader">Previous cover style</span>
+          <% end %>
+
+          <div class="book__cover-style-bar__label">
+            <strong data-book-cover-preview-target="styleName"><%= book_cover_style_options.fetch(book.cover_style, book_cover_style_options["glass"])[:label] %></strong>
+            <span class="book__cover-style-bar__hint" data-book-cover-preview-target="styleHint"><%= book_cover_style_options.fetch(book.cover_style, book_cover_style_options["glass"])[:hint] %></span>
+          </div>
+
+          <%= button_tag type: "button", class: "btn btn--circle book__cover-style-button", data: { action: "book-cover-preview#cycleStyle", direction: "1" } do %>
+            <%= image_tag "arrow-right.svg", aria: { hidden: true }, size: 24 %>
+            <span class="for-screen-reader">Next cover style</span>
+          <% end %>
+
+          <%= button_tag type: "button", class: "book__cover-shuffle-btn", data: { action: "book-cover-preview#refreshSeed" } do %>
+            <%= image_tag "refresh.svg", aria: { hidden: true }, size: 18, class: "colorize--black" %>
+            <span class="for-screen-reader">Shuffle</span>
+          <% end %>
+        </div>
       </div>
-      <div class="flex align-center gap txt-medium">
-        <%= translation_button(:book_subtitle) %>
-        <small class="txt-normal txt-large txt-tight-lines full-width"><%= form.text_area :subtitle, class: "input", placeholder: "Subtitle", autocomplete: "off" %></small>
-      </div>
-      <div class="flex align-center gap txt-medium">
-        <%= translation_button(:book_author) %>
-        <small class="txt-normal txt-large txt-tight-lines full-width"><%= form.text_field :author, class: "input", placeholder: "Author", autocomplete: "off" %></small>
+
+      <%# -- Right column: form fields -- %>
+      <div class="book__form-fields">
+        <%= form.text_field :title, required: true, autofocus: true, class: "input book__input--title", placeholder: "Book title", autocomplete: "off",
+            data: { action: "input->book-cover-preview#update", book_cover_preview_target: "titleInput" } %>
+        <%= form.text_area :subtitle, class: "input", placeholder: "Subtitle", autocomplete: "off",
+            data: { action: "input->book-cover-preview#update", book_cover_preview_target: "subtitleInput" } %>
+        <%= form.text_field :author, class: "input", placeholder: "Author", autocomplete: "off",
+            data: { action: "input->book-cover-preview#update", book_cover_preview_target: "authorInput" } %>
       </div>
     </div>
-  </div>
 
-  <div class="book-access border-radius center pad-double fill-shade flex flex-column gap margin-block-double">
-    <div class="flex align-center gap txt-medium--responsive">
-      <%= image_tag "eye.svg", aria: { hidden: true }, size: 36, class: "colorize--black" %>
+    <div class="book-access border-radius pad-double fill-shade flex flex-column gap full-width">
+      <div class="flex align-center gap txt-medium--responsive">
+        <%= image_tag "eye.svg", aria: { hidden: true }, size: 36, class: "colorize--black" %>
 
-      <div class="min-width">
-        <div class="overflow-ellipsis fill-shade"><strong>Everyone</strong></div>
+        <div class="min-width">
+          <div class="overflow-ellipsis fill-shade"><strong>Everyone</strong></div>
+        </div>
+
+        <hr class="flex-item-grow margin-none" aria-hidden="true" style="--border-style: dashed">
+
+        <label for="book_everyone_access" class="switch">
+          <%= form.check_box :everyone_access, class: "switch__input book-access__switch" %>
+          <span class="switch__btn"></span>
+          <span class="for-screen-reader">Only allow some people to read this book</span>
+        </label>
       </div>
 
-      <hr class="flex-item-grow margin-none" aria-hidden="true" style="--border-style: dashed">
+      <hr class="full-width margin-block-start margin-block-end-half">
 
-      <label for="book_everyone_access" class="switch">
-        <%= form.check_box :everyone_access, class: "switch__input book-access__switch" %>
-        <span class="switch__btn"></span>
-        <span class="for-screen-reader">Only allow some people to read this book</span>
-      </label>
+      <%= render partial: "books/accesses/access", collection: users, as: :user, locals: { book: book, creating_user: creating_user } %>
     </div>
 
-    <hr class="full-width margin-block-start margin-block-end-half">
-
-    <%= render partial: "books/accesses/access", collection: users, as: :user, locals: { book: book, creating_user: creating_user } %>
-  </div>
+  <% end %>
 
   <%= form.submit "Save", hidden: true %>
 <% end %>

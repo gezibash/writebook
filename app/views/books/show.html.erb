@@ -57,8 +57,16 @@
         <% end %>
       <% else %>
         <span class="book__cover-wrapper">
-          <%= image_tag "empty-cover.png", alt: "Book cover", class: "book__cover margin-block-none center" %>
-          <span class="book__title overflow-line-clamp pad txt-align-start txt-tight-lines"" style="--lines: 6" aria-hidden="true"><%= @book.title %></span>
+          <%= book_cover_art(seed: @book.cover_seed, theme: @book.theme, cover_style: @book.cover_style, class: "book__cover margin-block-none center") %>
+          <span class="book__cover-copy book__cover-copy--preview" aria-hidden="true">
+            <span class="book__title book__cover-title book__cover-title--preview overflow-line-clamp txt-align-start txt-tight-lines" style="--lines: 4"><%= @book.title %></span>
+            <% if @book.subtitle.present? %>
+              <span class="book__cover-subtitle book__cover-subtitle--preview overflow-line-clamp txt-align-start" style="--lines: 2"><%= @book.subtitle %></span>
+            <% end %>
+            <% if @book.author.present? %>
+              <span class="book__cover-author book__cover-author--preview overflow-line-clamp txt-align-start" style="--lines: 2"><%= @book.author %></span>
+            <% end %>
+          </span>
         </span>
       <% end %>
 

@@ -76,10 +76,12 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       post "tokens", to: "tokens#create"
+      post "join", to: "join#create"
 
       resources :books, only: %i[ index show create update destroy ] do
-        resources :pages, only: %i[ show create update destroy ]
-        resources :sections, only: %i[ show create update destroy ]
+        resources :pages, only: %i[ index show create update destroy ]
+        resources :sections, only: %i[ index show create update destroy ]
+        resources :pictures, only: %i[ index show create update destroy ]
       end
     end
   end

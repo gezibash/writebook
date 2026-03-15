@@ -1,6 +1,14 @@
 require "test_helper"
 
 class BookTest < ActiveSupport::TestCase
+  test "defaults to glass cover style" do
+    assert_equal "glass", Book.new.cover_style
+  end
+
+  test "assigns a cover seed by default" do
+    assert_match(/\A\h{16}\z/, Book.new.cover_seed)
+  end
+
   test "slug is generated from title" do
     book = Book.create!(title: "Hello, World!")
     assert_equal "hello-world", book.slug

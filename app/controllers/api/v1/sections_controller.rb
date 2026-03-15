@@ -2,8 +2,13 @@ module Api
   module V1
     class SectionsController < BaseController
       before_action :set_book
-      before_action -> { ensure_editable(@book) }
+      before_action -> { ensure_editable(@book) }, except: %i[ index ]
       before_action :set_leaf, only: %i[ show update destroy ]
+
+      def index
+        sections = @book.leaves.active.with_leafables.positioned.where(leafable_type: "Section")
+        render json: sections.map { |l| section_json(l) }
+      end
 
       def show
         render json: section_json(@leaf)

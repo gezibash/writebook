@@ -8,6 +8,18 @@ class Api::V1::PagesControllerTest < ActionDispatch::IntegrationTest
     @book = books(:handbook)
   end
 
+  test "index lists pages in a book" do
+    post api_v1_book_pages_url(@book), headers: @headers, as: :json,
+      params: { leaf: { title: "Test Page" }, page: { body: "content" } }
+
+    get api_v1_book_pages_url(@book), headers: @headers, as: :json
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    assert json.is_a?(Array)
+    assert json.any? { |p| p["title"] == "Test Page" }
+  end
+
   test "create adds a page to a book" do
     assert_difference -> { @book.leaves.count }, +1 do
       post api_v1_book_pages_url(@book), headers: @headers, as: :json,

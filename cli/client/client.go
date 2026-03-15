@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -44,6 +47,8 @@ type Book struct {
 	Slug           string `json:"slug"`
 	Published      bool   `json:"published"`
 	Theme          string `json:"theme"`
+	CoverStyle     string `json:"cover_style"`
+	CoverSeed      string `json:"cover_seed"`
 	EveryoneAccess bool   `json:"everyone_access"`
 	CreatedAt      string `json:"created_at"`
 	UpdatedAt      string `json:"updated_at"`
@@ -74,6 +79,8 @@ type CreateBookParams struct {
 	Subtitle       string `json:"subtitle,omitempty"`
 	Author         string `json:"author,omitempty"`
 	Theme          string `json:"theme,omitempty"`
+	CoverStyle     string `json:"cover_style,omitempty"`
+	CoverSeed      string `json:"cover_seed,omitempty"`
 	EveryoneAccess *bool  `json:"everyone_access,omitempty"`
 }
 
@@ -82,12 +89,16 @@ type UpdateBookParams struct {
 	Subtitle       *string `json:"subtitle,omitempty"`
 	Author         *string `json:"author,omitempty"`
 	Theme          *string `json:"theme,omitempty"`
+	CoverStyle     *string `json:"cover_style,omitempty"`
+	CoverSeed      *string `json:"cover_seed,omitempty"`
 	EveryoneAccess *bool   `json:"everyone_access,omitempty"`
+	Published      *bool   `json:"published,omitempty"`
 }
 
 type CreatePageParams struct {
-	Title string
-	Body  string
+	Title    string
+	Body     string
+	Position *int
 }
 
 type UpdatePageParams struct {
@@ -96,15 +107,29 @@ type UpdatePageParams struct {
 }
 
 type CreateSectionParams struct {
-	Title string
-	Body  string
-	Theme string
+	Title    string
+	Body     string
+	Theme    string
+	Position *int
 }
 
 type UpdateSectionParams struct {
 	Title *string
 	Body  *string
 	Theme *string
+}
+
+type CreatePictureParams struct {
+	Title    string
+	Caption  string
+	Image    string // file path
+	Position *int
+}
+
+type UpdatePictureParams struct {
+	Title   *string
+	Caption *string
+	Image   *string // file path
 }
 
 type APIError struct {
@@ -169,6 +194,27 @@ func (c *Client) checkError(body []byte, statusCode int) error {
 func (c *Client) Login(email, password string) (*TokenResponse, error) {
 	body := map[string]string{"email": email, "password": password}
 	respBody, status, err := c.doRequest("POST", "/api/v1/tokens", body)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var result TokenResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return &result, nil
+}
+
+func (c *Client) Join(joinCode, name, email, password string) (*TokenResponse, error) {
+	body := map[string]string{
+		"join_code": joinCode,
+		"name":      name,
+		"email":     email,
+		"password":  password,
+	}
+	respBody, status, err := c.doRequest("POST", "/api/v1/join", body)
 	if err != nil {
 		return nil, err
 	}
@@ -259,10 +305,28 @@ func (c *Client) DeleteBook(id int) error {
 
 // Pages
 
+func (c *Client) ListPages(bookID int) ([]Leaf, error) {
+	respBody, status, err := c.doRequest("GET", fmt.Sprintf("/api/v1/books/%d/pages", bookID), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var pages []Leaf
+	if err := json.Unmarshal(respBody, &pages); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return pages, nil
+}
+
 func (c *Client) CreatePage(bookID int, params CreatePageParams) (*Leaf, error) {
 	body := map[string]interface{}{
 		"page": map[string]string{"body": params.Body},
 		"leaf": map[string]string{"title": params.Title},
+	}
+	if params.Position != nil {
+		body["position"] = *params.Position
 	}
 	respBody, status, err := c.doRequest("POST", fmt.Sprintf("/api/v1/books/%d/pages", bookID), body)
 	if err != nil {
@@ -330,6 +394,21 @@ func (c *Client) DeletePage(bookID, pageID int) error {
 
 // Sections
 
+func (c *Client) ListSections(bookID int) ([]Leaf, error) {
+	respBody, status, err := c.doRequest("GET", fmt.Sprintf("/api/v1/books/%d/sections", bookID), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var sections []Leaf
+	if err := json.Unmarshal(respBody, &sections); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return sections, nil
+}
+
 func (c *Client) CreateSection(bookID int, params CreateSectionParams) (*Leaf, error) {
 	section := map[string]string{}
 	if params.Body != "" {
@@ -341,6 +420,9 @@ func (c *Client) CreateSection(bookID int, params CreateSectionParams) (*Leaf, e
 	body := map[string]interface{}{
 		"section": section,
 		"leaf":    map[string]string{"title": params.Title},
+	}
+	if params.Position != nil {
+		body["position"] = *params.Position
 	}
 	respBody, status, err := c.doRequest("POST", fmt.Sprintf("/api/v1/books/%d/sections", bookID), body)
 	if err != nil {
@@ -400,6 +482,168 @@ func (c *Client) UpdateSection(bookID, sectionID int, params UpdateSectionParams
 
 func (c *Client) DeleteSection(bookID, sectionID int) error {
 	respBody, status, err := c.doRequest("DELETE", fmt.Sprintf("/api/v1/books/%d/sections/%d", bookID, sectionID), nil)
+	if err != nil {
+		return err
+	}
+	if status == 204 {
+		return nil
+	}
+	return c.checkError(respBody, status)
+}
+
+// Pictures
+
+func (c *Client) doMultipartRequest(method, path string, fields map[string]string, filePath string, fileField string) ([]byte, int, error) {
+	url := c.BaseURL + path
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	for k, v := range fields {
+		if err := writer.WriteField(k, v); err != nil {
+			return nil, 0, fmt.Errorf("writing field %s: %w", k, err)
+		}
+	}
+
+	if filePath != "" {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, 0, fmt.Errorf("opening file: %w", err)
+		}
+		defer file.Close()
+
+		part, err := writer.CreateFormFile(fileField, filepath.Base(filePath))
+		if err != nil {
+			return nil, 0, fmt.Errorf("creating form file: %w", err)
+		}
+		if _, err := io.Copy(part, file); err != nil {
+			return nil, 0, fmt.Errorf("copying file: %w", err)
+		}
+	}
+
+	if err := writer.Close(); err != nil {
+		return nil, 0, fmt.Errorf("closing multipart writer: %w", err)
+	}
+
+	req, err := http.NewRequest(method, url, &body)
+	if err != nil {
+		return nil, 0, fmt.Errorf("creating request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("reading response: %w", err)
+	}
+
+	return respBody, resp.StatusCode, nil
+}
+
+func (c *Client) ListPictures(bookID int) ([]Leaf, error) {
+	respBody, status, err := c.doRequest("GET", fmt.Sprintf("/api/v1/books/%d/pictures", bookID), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var pictures []Leaf
+	if err := json.Unmarshal(respBody, &pictures); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return pictures, nil
+}
+
+func (c *Client) CreatePicture(bookID int, params CreatePictureParams) (*Leaf, error) {
+	fields := map[string]string{
+		"leaf[title]":      params.Title,
+		"picture[caption]": params.Caption,
+	}
+	if params.Position != nil {
+		fields["position"] = fmt.Sprintf("%d", *params.Position)
+	}
+
+	respBody, status, err := c.doMultipartRequest(
+		"POST",
+		fmt.Sprintf("/api/v1/books/%d/pictures", bookID),
+		fields,
+		params.Image,
+		"picture[image]",
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var leaf Leaf
+	if err := json.Unmarshal(respBody, &leaf); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return &leaf, nil
+}
+
+func (c *Client) GetPicture(bookID, pictureID int) (*Leaf, error) {
+	respBody, status, err := c.doRequest("GET", fmt.Sprintf("/api/v1/books/%d/pictures/%d", bookID, pictureID), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var leaf Leaf
+	if err := json.Unmarshal(respBody, &leaf); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return &leaf, nil
+}
+
+func (c *Client) UpdatePicture(bookID, pictureID int, params UpdatePictureParams) (*Leaf, error) {
+	fields := map[string]string{}
+	if params.Title != nil {
+		fields["leaf[title]"] = *params.Title
+	}
+	if params.Caption != nil {
+		fields["picture[caption]"] = *params.Caption
+	}
+
+	imagePath := ""
+	if params.Image != nil {
+		imagePath = *params.Image
+	}
+
+	respBody, status, err := c.doMultipartRequest(
+		"PATCH",
+		fmt.Sprintf("/api/v1/books/%d/pictures/%d", bookID, pictureID),
+		fields,
+		imagePath,
+		"picture[image]",
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var leaf Leaf
+	if err := json.Unmarshal(respBody, &leaf); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return &leaf, nil
+}
+
+func (c *Client) DeletePicture(bookID, pictureID int) error {
+	respBody, status, err := c.doRequest("DELETE", fmt.Sprintf("/api/v1/books/%d/pictures/%d", bookID, pictureID), nil)
 	if err != nil {
 		return err
 	}

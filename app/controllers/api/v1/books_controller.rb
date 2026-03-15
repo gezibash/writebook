@@ -42,7 +42,7 @@ module Api
         end
 
         def book_params
-          params.require(:book).permit(:title, :subtitle, :author, :everyone_access, :theme)
+          params.require(:book).permit(:title, :subtitle, :author, :everyone_access, :theme, :cover_style, :cover_seed, :published)
         end
 
         def book_json(book)
@@ -54,6 +54,8 @@ module Api
             slug: book.slug,
             published: book.published,
             theme: book.theme,
+            cover_style: book.cover_style,
+            cover_seed: book.cover_seed,
             everyone_access: book.everyone_access,
             created_at: book.created_at,
             updated_at: book.updated_at

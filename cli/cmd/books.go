@@ -25,12 +25,17 @@ func init() {
 	booksCreateCmd.Flags().String("subtitle", "", "Book subtitle")
 	booksCreateCmd.Flags().String("author", "", "Book author")
 	booksCreateCmd.Flags().String("theme", "", "Book theme (black, blue, green, magenta, orange, violet, white)")
+	booksCreateCmd.Flags().String("cover-style", "", "Book cover style (glass, rings, shapes, identicon)")
+	booksCreateCmd.Flags().String("cover-seed", "", "Book cover seed")
 	booksCreateCmd.MarkFlagRequired("title")
 
 	booksUpdateCmd.Flags().String("title", "", "New title")
 	booksUpdateCmd.Flags().String("subtitle", "", "New subtitle")
 	booksUpdateCmd.Flags().String("author", "", "New author")
 	booksUpdateCmd.Flags().String("theme", "", "New theme")
+	booksUpdateCmd.Flags().String("cover-style", "", "New cover style")
+	booksUpdateCmd.Flags().String("cover-seed", "", "New cover seed")
+	booksUpdateCmd.Flags().Bool("published", false, "Set published status")
 
 	booksDeleteCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 }
@@ -62,13 +67,13 @@ var booksListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tTITLE\tAUTHOR\tPUBLISHED\tTHEME")
+		fmt.Fprintln(w, "ID\tTITLE\tAUTHOR\tPUBLISHED\tTHEME\tCOVER STYLE")
 		for _, b := range books {
 			published := "no"
 			if b.Published {
 				published = "yes"
 			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", b.ID, b.Title, b.Author, published, b.Theme)
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n", b.ID, b.Title, b.Author, published, b.Theme, b.CoverStyle)
 		}
 		w.Flush()
 		return nil
@@ -83,12 +88,16 @@ var booksCreateCmd = &cobra.Command{
 		subtitle, _ := cmd.Flags().GetString("subtitle")
 		author, _ := cmd.Flags().GetString("author")
 		theme, _ := cmd.Flags().GetString("theme")
+		coverStyle, _ := cmd.Flags().GetString("cover-style")
+		coverSeed, _ := cmd.Flags().GetString("cover-seed")
 
 		params := client.CreateBookParams{
-			Title:    title,
-			Subtitle: subtitle,
-			Author:   author,
-			Theme:    theme,
+			Title:      title,
+			Subtitle:   subtitle,
+			Author:     author,
+			Theme:      theme,
+			CoverStyle: coverStyle,
+			CoverSeed:  coverSeed,
 		}
 
 		c := client.NewClient(getURL(), getToken())
@@ -137,7 +146,10 @@ var booksShowCmd = &cobra.Command{
 		if book.Author != "" {
 			fmt.Printf("Author: %s\n", book.Author)
 		}
-		fmt.Printf("Theme: %s | Published: %v\n", book.Theme, book.Published)
+		fmt.Printf("Theme: %s | Cover: %s | Published: %v\n", book.Theme, book.CoverStyle, book.Published)
+		if book.CoverSeed != "" {
+			fmt.Printf("Cover seed: %s\n", book.CoverSeed)
+		}
 		fmt.Println()
 
 		if len(book.Leaves) == 0 {
@@ -181,6 +193,18 @@ var booksUpdateCmd = &cobra.Command{
 		if cmd.Flags().Changed("theme") {
 			v, _ := cmd.Flags().GetString("theme")
 			params.Theme = &v
+		}
+		if cmd.Flags().Changed("cover-style") {
+			v, _ := cmd.Flags().GetString("cover-style")
+			params.CoverStyle = &v
+		}
+		if cmd.Flags().Changed("cover-seed") {
+			v, _ := cmd.Flags().GetString("cover-seed")
+			params.CoverSeed = &v
+		}
+		if cmd.Flags().Changed("published") {
+			v, _ := cmd.Flags().GetBool("published")
+			params.Published = &v
 		}
 
 		c := client.NewClient(getURL(), getToken())

@@ -16,6 +16,10 @@ import (
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
+
+	loginCmd.Flags().String("url", "", "Writebook server URL")
+	loginCmd.Flags().String("email", "", "Login email")
+	loginCmd.Flags().String("password", "", "Login password")
 }
 
 var loginCmd = &cobra.Command{
@@ -24,24 +28,33 @@ var loginCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		reader := bufio.NewReader(os.Stdin)
 
-		url := viper.GetString("url")
+		url, _ := cmd.Flags().GetString("url")
+		if url == "" {
+			url = viper.GetString("url")
+		}
 		if url == "" {
 			fmt.Print("Writebook URL: ")
 			input, _ := reader.ReadString('\n')
 			url = strings.TrimSpace(input)
 		}
 
-		fmt.Print("Email: ")
-		email, _ := reader.ReadString('\n')
-		email = strings.TrimSpace(email)
-
-		fmt.Print("Password: ")
-		passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Println()
-		if err != nil {
-			return fmt.Errorf("reading password: %w", err)
+		email, _ := cmd.Flags().GetString("email")
+		if email == "" {
+			fmt.Print("Email: ")
+			input, _ := reader.ReadString('\n')
+			email = strings.TrimSpace(input)
 		}
-		password := string(passwordBytes)
+
+		password, _ := cmd.Flags().GetString("password")
+		if password == "" {
+			fmt.Print("Password: ")
+			passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			fmt.Println()
+			if err != nil {
+				return fmt.Errorf("reading password: %w", err)
+			}
+			password = string(passwordBytes)
+		}
 
 		c := client.NewClient(url, "")
 		resp, err := c.Login(email, password)

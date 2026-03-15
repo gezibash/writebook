@@ -3,7 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -12,6 +14,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(sectionsCmd)
+	sectionsCmd.AddCommand(sectionsListCmd)
 	sectionsCmd.AddCommand(sectionsCreateCmd)
 	sectionsCmd.AddCommand(sectionsShowCmd)
 	sectionsCmd.AddCommand(sectionsUpdateCmd)
@@ -20,6 +23,7 @@ func init() {
 	sectionsCreateCmd.Flags().String("title", "", "Section title (required)")
 	sectionsCreateCmd.Flags().String("body", "", "Section body")
 	sectionsCreateCmd.Flags().String("theme", "", "Section theme")
+	sectionsCreateCmd.Flags().Int("position", 0, "Position within the book")
 	sectionsCreateCmd.MarkFlagRequired("title")
 
 	sectionsUpdateCmd.Flags().String("title", "", "New title")
@@ -30,6 +34,43 @@ func init() {
 var sectionsCmd = &cobra.Command{
 	Use:   "sections",
 	Short: "Manage sections within a book",
+}
+
+var sectionsListCmd = &cobra.Command{
+	Use:   "list <book_id>",
+	Short: "List sections in a book",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		bookID, err := strconv.Atoi(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid book_id: %s", args[0])
+		}
+
+		c := client.NewClient(getURL(), getToken())
+		sections, err := c.ListSections(bookID)
+		if err != nil {
+			return err
+		}
+
+		if jsonOutput {
+			data, _ := json.MarshalIndent(sections, "", "  ")
+			fmt.Println(string(data))
+			return nil
+		}
+
+		if len(sections) == 0 {
+			fmt.Println("No sections found.")
+			return nil
+		}
+
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "ID\tTITLE\tTHEME\tSTATUS\tPOSITION")
+		for _, s := range sections {
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%.0f\n", s.ID, s.Title, s.Theme, s.Status, s.Position)
+		}
+		w.Flush()
+		return nil
+	},
 }
 
 var sectionsCreateCmd = &cobra.Command{
@@ -47,6 +88,10 @@ var sectionsCreateCmd = &cobra.Command{
 		theme, _ := cmd.Flags().GetString("theme")
 
 		params := client.CreateSectionParams{Title: title, Body: body, Theme: theme}
+		if cmd.Flags().Changed("position") {
+			v, _ := cmd.Flags().GetInt("position")
+			params.Position = &v
+		}
 		c := client.NewClient(getURL(), getToken())
 		leaf, err := c.CreateSection(bookID, params)
 		if err != nil {

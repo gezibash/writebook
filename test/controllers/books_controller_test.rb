@@ -41,15 +41,30 @@ class BooksControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_url
   end
 
+  test "new renders cover style picker" do
+    get new_book_url
+
+    assert_response :success
+    assert_select "[data-controller='book-cover-preview']"
+    assert_select "input[name='book[cover_seed]'][type='hidden'][value]", count: 1
+    assert_select "[data-action='book-cover-preview#refreshSeed']"
+    assert_select "input[name='book[cover_style]'][value='glass'][checked='checked']"
+    assert_select "input[name='book[cover_style]'][value='rings']"
+  end
+
   test "create makes the current user an editor" do
+    cover_seed = "feedfacecafebeef"
+
     assert_difference -> { Book.count }, +1 do
-      post books_url, params: { book: { title: "New Book", everyone_access: false } }
+      post books_url, params: { book: { title: "New Book", everyone_access: false, cover_style: "glass", cover_seed: cover_seed } }
     end
 
     assert_redirected_to book_slug_url(Book.last)
 
     book = Book.last
     assert_equal "New Book", book.title
+    assert_equal "glass", book.cover_style
+    assert_equal cover_seed, book.cover_seed
     assert_equal 1, Book.last.accesses.count
 
     assert book.editable?(user: users(:kevin))

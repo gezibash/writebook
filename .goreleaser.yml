@@ -8,7 +8,7 @@ before:
 
 builds:
   - id: writebook-cli
-    binary: writebook-cli
+    binary: writebook
     dir: ./cli
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
@@ -21,7 +21,7 @@ builds:
       - arm64
 
 archives:
-  - name_template: "writebook-cli_{{ .Os }}_{{ .Arch }}"
+  - name_template: "writebook_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
     format_overrides:

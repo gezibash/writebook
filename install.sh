@@ -5,7 +5,7 @@ set -e
 # Usage: curl -fsSL https://raw.githubusercontent.com/gezibash/writebook/main/install.sh | sh
 
 REPO="gezibash/writebook"
-BINARY="writebook-cli"
+BINARY="writebook"
 INSTALL_DIR="/usr/local/bin"
 
 # Colors (if terminal supports it)
@@ -132,7 +132,7 @@ main() {
     printf "\n"
     "${INSTALL_PATH}" --version
     printf "\n"
-    info "Run 'writebook-cli login' to get started"
+    info "Run 'writebook login' to get started"
 }
 
 main

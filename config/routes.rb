@@ -77,8 +77,10 @@ Rails.application.routes.draw do
     namespace :v1 do
       post "tokens", to: "tokens#create"
       post "join", to: "join#create"
+      get "search", to: "searches#index"
 
       resources :books, only: %i[ index show create update destroy ] do
+        get "search", to: "searches#show"
         resources :pages, only: %i[ index show create update destroy ]
         resources :sections, only: %i[ index show create update destroy ]
         resources :pictures, only: %i[ index show create update destroy ]

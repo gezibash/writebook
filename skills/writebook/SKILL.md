@@ -16,6 +16,7 @@ Read these when you need exact flags, examples, or details for a specific resour
 - `references/pages.md` — adding markdown content, bulk import from files
 - `references/sections.md` — organizing books with dividers
 - `references/pictures.md` — uploading images, bulk image import
+- `references/search.md` — full-text search across books, global and book-scoped
 
 ## Quick orientation
 
@@ -98,3 +99,5 @@ writebook books show 3 --json | jq '.leaves[] | {id, type, title}'
 **`--body-file`** for pages reads content from a file. Use it for anything longer than a sentence instead of `--body`.
 
 **Pictures use file upload** — always pass `--image ./path.jpg`. Accepted formats: PNG, JPEG, WebP.
+
+**Search** finds content across all books or within one: `writebook search "deploy"` or `writebook search "deploy" --book 3`. See `references/search.md`.

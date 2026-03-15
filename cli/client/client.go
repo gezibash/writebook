@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,6 +131,22 @@ type UpdatePictureParams struct {
 	Title   *string
 	Caption *string
 	Image   *string // file path
+}
+
+type SearchResult struct {
+	ID             int    `json:"id"`
+	Title          string `json:"title"`
+	TitleSnippet   string `json:"title_snippet"`
+	ContentSnippet string `json:"content_snippet"`
+	Type           string `json:"type"`
+	BookID         int    `json:"book_id"`
+	BookTitle      string `json:"book_title"`
+}
+
+type BookSearchGroup struct {
+	BookID    int            `json:"book_id"`
+	BookTitle string         `json:"book_title"`
+	Results   []SearchResult `json:"results"`
 }
 
 type APIError struct {
@@ -651,4 +668,36 @@ func (c *Client) DeletePicture(bookID, pictureID int) error {
 		return nil
 	}
 	return c.checkError(respBody, status)
+}
+
+// Search
+
+func (c *Client) SearchGlobal(query string) ([]BookSearchGroup, error) {
+	respBody, status, err := c.doRequest("GET", "/api/v1/search?q="+url.QueryEscape(query), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var groups []BookSearchGroup
+	if err := json.Unmarshal(respBody, &groups); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return groups, nil
+}
+
+func (c *Client) SearchBook(bookID int, query string) ([]SearchResult, error) {
+	respBody, status, err := c.doRequest("GET", fmt.Sprintf("/api/v1/books/%d/search?q=%s", bookID, url.QueryEscape(query)), nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.checkError(respBody, status); err != nil {
+		return nil, err
+	}
+	var results []SearchResult
+	if err := json.Unmarshal(respBody, &results); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+	return results, nil
 }

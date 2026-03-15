@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,10 +31,23 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 }
 
+func configDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error finding home directory: %s\n", err)
+		os.Exit(1)
+	}
+	return filepath.Join(home, ".config", "writebook")
+}
+
+func configPath() string {
+	return filepath.Join(configDir(), "config.toml")
+}
+
 func initConfig() {
-	viper.SetConfigName(".writebook")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME")
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(configDir())
 
 	viper.SetEnvPrefix("WRITEBOOK")
 	viper.AutomaticEnv()

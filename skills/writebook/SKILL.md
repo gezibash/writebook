@@ -30,7 +30,7 @@ Leaves are ordered by **position** within a book.
 
 Check if the CLI is already configured:
 ```bash
-cat ~/.writebook.yaml 2>/dev/null
+cat ~/.config/writebook/config.toml 2>/dev/null
 ```
 
 If it has `url` and `token`, you're ready. Otherwise:

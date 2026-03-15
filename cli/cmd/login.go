@@ -69,20 +69,19 @@ var loginCmd = &cobra.Command{
 		}
 
 		// Save to config file
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("finding home directory: %w", err)
-		}
-
 		viper.Set("url", url)
 		viper.Set("token", resp.Token)
-		configPath := home + "/.writebook.yaml"
-		if err := viper.WriteConfigAs(configPath); err != nil {
+
+		if err := os.MkdirAll(configDir(), 0755); err != nil {
+			return fmt.Errorf("creating config directory: %w", err)
+		}
+		cp := configPath()
+		if err := viper.WriteConfigAs(cp); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Printf("Logged in as %s (%s)\n", resp.User.Name, resp.User.Role)
-		fmt.Printf("Config saved to %s\n", configPath)
+		fmt.Printf("Config saved to %s\n", cp)
 		return nil
 	},
 }

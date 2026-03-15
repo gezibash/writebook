@@ -30,7 +30,7 @@ var joinCmd = &cobra.Command{
 	Long: `Join a Writebook instance using an invite URL like:
   writebook join http://localhost:3007/join/gFoO-0Lkb-UcFa
 
-Creates your account and saves the API token to ~/.writebook.yaml.
+Creates your account and saves the API token to ~/.config/writebook/config.toml.
 Pass --name, --email, --password flags for non-interactive usage.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -90,20 +90,19 @@ Pass --name, --email, --password flags for non-interactive usage.`,
 		}
 
 		// Save to config
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("finding home directory: %w", err)
-		}
-
 		viper.Set("url", baseURL)
 		viper.Set("token", resp.Token)
-		configPath := home + "/.writebook.yaml"
-		if err := viper.WriteConfigAs(configPath); err != nil {
+
+		if err := os.MkdirAll(configDir(), 0755); err != nil {
+			return fmt.Errorf("creating config directory: %w", err)
+		}
+		cp := configPath()
+		if err := viper.WriteConfigAs(cp); err != nil {
 			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Printf("Joined as %s (%s)\n", resp.User.Name, resp.User.Role)
-		fmt.Printf("Config saved to %s\n", configPath)
+		fmt.Printf("Config saved to %s\n", cp)
 		return nil
 	},
 }

@@ -4,7 +4,8 @@ project_name: writebook-cli
 
 before:
   hooks:
-    - go mod tidy
+    - cmd: go mod tidy
+      dir: ./cli
 
 builds:
   - id: writebook-cli
@@ -21,13 +22,13 @@ builds:
       - arm64
 
 archives:
-  - id: writebook-cli
-    builds:
-      - writebook-cli
-    name_template: "writebook-cli_{{ .Os }}_{{ .Arch }}"
+  - name_template: "writebook-cli_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 checksum:
   name_template: "checksums.txt"
